@@ -23,7 +23,9 @@ def download_loupeR(path: str) -> None:
     Downloads the loupeR binary to the specified path
     '''
     if platform.architecture()[0] != '64bit':
-        raise OSError('Only 64-bit operating systems are supported')
+        raise OSError('Only 64-bit operating systems are supported by loupe converter')
+    if not os.path.exists(os.path.dirname(path)):
+        raise OSError('The specified directory does not exist')
     if OPERATING_SYSTEM.startswith('linux'):
         tmp_path = path + '.tmp'
         md5=_md5_checksum("https://github.com/10XGenomics/loupeR/releases/download/v1.1.4/louper-linux-x64", tmp_path)

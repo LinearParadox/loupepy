@@ -18,5 +18,7 @@ build-backend = "hatchling.build"
 [dependency-groups]
 dev = [
     "mypy>=1.15.0",
+    "pandas-stubs>=2.2.3.250308",
     "pytest>=8.3.5",
+    "scipy-stubs>=1.15.2.1",
 ]
