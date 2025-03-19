@@ -241,6 +241,7 @@ dependencies = [
 [package.dev-dependencies]
 dev = [
     { name = "mypy" },
+    { name = "mypy-extensions" },
     { name = "pandas-stubs" },
     { name = "pytest" },
     { name = "scipy-stubs" },
@@ -252,6 +253,7 @@ requires-dist = [{ name = "scanpy", specifier = ">=1.11.0" }]
 [package.metadata.requires-dev]
 dev = [
     { name = "mypy", specifier = ">=1.15.0" },
+    { name = "mypy-extensions", specifier = ">=1.0.0" },
     { name = "pandas-stubs", specifier = ">=2.2.3.250308" },
     { name = "pytest", specifier = ">=8.3.5" },
     { name = "scipy-stubs", specifier = ">=1.15.2.1" },
