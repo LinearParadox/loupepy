@@ -4,7 +4,6 @@ import hashlib
 import os
 OPERATING_SYSTEM = platform.system()
 
-
 def _md5_checksum(url: str, path: str) -> str:
     '''
     Downloads a file from a URL and returns the MD5 checksum of the file
@@ -89,4 +88,3 @@ def eula_reset(path: str) -> None:
     if os.path.exists(f'{path}/eula/eula_agreement'):
         os.remove(f'{path}/euale/eula_agreement')
         print('EULA agreement reset')
-                        
