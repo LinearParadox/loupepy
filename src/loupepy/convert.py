@@ -48,13 +48,13 @@ def _write_clusters(f: h5py.File, obs: pd.DataFrame) -> None:
     cluster_group = f.create_group('clusters')
     for i in obs.columns:
         name = i
-        cluster = df.loc[:, i]
-        group=cluster_group.create_group(name)
-        _create_string_dataset(group, "name", name)
-        _create_string_dataset(group, "group_names", cluster.cat.categories)
+        cluster = obs.loc[:, i]
+        group = cluster_group.create_group(name)
+        _create_string_dataset(group, "name", [i])
+        _create_string_dataset(group, "group_names", cluster.cat.categories.tolist())
         group.create_dataset("assignments", data=cluster.cat.codes, dtype=int)
         group.create_dataset("score", 0.0)
-        _create_string_dataset(group, "clustering_type", "unknown")
+        _create_string_dataset(group, "clustering_type", ["unknown"])
         group.close()
     cluster_group.close()
 
@@ -66,6 +66,20 @@ def create_loupe(anndata: AnnData, output_file:str, layer: str | None = None, tm
                  obs_keys: list[str] | None=None, feature_ids: list["str"]|pd.Series|None = None) -> None:
     ''''
     Creates a temp h5 file and calls the loupe converter executable for the conversion
+    Args:
+        anndata (AnnData): AnnData object to convert.
+        output_file (str): Path to the output file.
+        layer (str | None, optional): Layer to use. Defaults to None.
+        tmp_file (str, optional): Path to the temp file. Defaults to "tmp.h5ad".
+        loupe_converter_path (str | None, optional): Path to the loupe converter executable. Defaults to None.
+        dims (list[str] | None, optional): Dimensions to use. Defaults to None.
+        obs_keys (list[str] | None, optional): Keys of obs to use. Defaults to None.
+        feature_ids (list["str"]|pd.Series|None, optional): Feature ids. Defaults to None.
+    Raises:
+        ValueError: If the output file does not exist.
+        ValueError: If the layer is not valid.
+        ValueError: If the obs keys are not valid.
+        ValueError: If the feature ids are not valid.
     '''
     if not os.path.exists(os.path.basename(output_file)):
         raise ValueError('Output file does not exist')
@@ -85,3 +99,4 @@ def create_loupe(anndata: AnnData, output_file:str, layer: str | None = None, tm
         barcodes = anndata.obs_names
         _write_matrix(f, anndata.X.T, features, barcodes, feature_ids)
         _write_clusters(f, obs)
+        

@@ -9,6 +9,13 @@ import platform
 import warnings
 
 def _validate_barcodes(barcodes: Series) -> bool:
+    """
+    Validate the barcodes in the anndata object.
+    Args:
+        barcodes (Series): Barcodes to validate.
+    Returns:
+        bool: True if the barcodes are valid, False otherwise.
+    """
     barcode_regex = "^(.*[:_])?([ACGT]{14,})([:_].*)?$"
     barcode_gem_regex = "^(.*[:_])?([ACGT]{14,})-(\\d+)([:_].*)?$"
     visium_hd_regex = "^(.*[:_])?(s_\\d{3}um_\\d{5}_\\d{5})([:_].*)?$"
@@ -20,6 +27,16 @@ def _validate_barcodes(barcodes: Series) -> bool:
     return True
 
 def _validate_counts(mat: Union[ArrayLike, sp.spmatrix])  -> None:
+    '''
+    Validate the counts matrix.
+    Args:
+        mat (Union[ArrayLike, sp.spmatrix]): Counts matrix to validate.
+        Returns:
+        None
+            
+        Raises:
+        ValueError: If the counts matrix is not valid.
+        '''
     if sp.issparse(mat) and not bool(np.isnan(mat.data).any() or np.isinf(mat.data).any()):
         raise ValueError('Counts matrix contains NaN! This is not compatible with loupe converter!')
     if bool(np.isnan(mat).any() or np.isinf(mat).any()): # type: ignore
@@ -61,6 +78,14 @@ def _get_loupe_path() -> str:
     return path
 
 def _validate_obs(obs: DataFrame) -> DataFrame:
+    """
+    Validate the obs dataframe.
+    Args:
+        obs (DataFrame): obs dataframe to validate.
+    Returns:
+        DataFrame: Validated obs dataframe with invalid columns dropped, and category columns converted to category dtype.
+    """
+
     for col in obs.columns:
         if not obs[col].dtype == 'category':
             obs[col] = obs[col].astype('category')
