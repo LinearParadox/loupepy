@@ -21,5 +21,6 @@ dev = [
     "mypy-extensions>=1.0.0",
     "pandas-stubs>=2.2.3.250308",
     "pytest>=8.3.5",
+    "ruff>=0.11.5",
     "scipy-stubs>=1.15.2.1",
 ]
