@@ -4,7 +4,7 @@ from numpy.typing import ArrayLike
 from anndata import AnnData  # type: ignore
 import numpy as np
 import scipy.sparse as sp
-from setup import _get_install_path
+from .setup import _get_install_path
 import os
 import platform
 import warnings
@@ -17,15 +17,15 @@ def _validate_barcodes(barcodes: Series) -> bool:
     Returns:
         bool: True if the barcodes are valid, False otherwise.
     """
-    barcode_regex = "^(.*[:_])?([ACGT]{14,})([:_].*)?$"
-    barcode_gem_regex = "^(.*[:_])?([ACGT]{14,})-(\\d+)([:_].*)?$"
-    visium_hd_regex = "^(.*[:_])?(s_\\d{3}um_\\d{5}_\\d{5})([:_].*)?$"
-    visium_hd_gem_regex = "^(.*[:_])?(s_\\d{3}um_\\d{5}_\\d{5})-(\\d+)([:_].*)?$"
-    xenium_cell_id_regex = "^(.*[:_])?([a-p]{1,8})-(\\d+)([:_].*)?$"
+    barcode_regex = r"^(.*[:_])?([ACGT]{14,})([:_].*)?$"
+    barcode_gem_regex = r"^(.*[:_])?([ACGT]{14,})-(\d+)([:_].*)?$"
+    visium_hd_regex = r"^(.*[:_])?(s_\d{3}um_\d{5}_\d{5})([:_].*)?$"
+    visium_hd_gem_regex = r"^(.*[:_])?(s_\d{3}um_\d{5}_\d{5})-(\d+)([:_].*)?$"
+    xenium_cell_id_regex = r"^(.*[:_])?([a-p]{1,8})-(\d+)([:_].*)?$"
     for n in [barcode_gem_regex, barcode_regex, visium_hd_regex, visium_hd_gem_regex, xenium_cell_id_regex]:
-        if not barcodes.str.fullmatch(n).all():
-            return False
-    return True
+        if barcodes.str.fullmatch(n).all():
+            return True
+    return False
 
 def _validate_counts(mat: Union[ArrayLike, sp.spmatrix])  -> None:
     '''

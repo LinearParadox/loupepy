@@ -1,5 +1,4 @@
 import platform
-from os import PathLike
 from urllib.request import urlretrieve
 import hashlib
 from pathlib import Path

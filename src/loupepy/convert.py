@@ -1,12 +1,11 @@
 import os
-import sys
 from anndata import AnnData # type: ignore
 import pandas as pd
 from scipy.sparse import csr_matrix
 import h5py # type: ignore
 from typing import Any, Union, List
 from array import array
-from utils import _validate_anndata, _validate_obs, _get_loupe_path
+from .utils import _validate_anndata, _validate_obs, _get_loupe_path
 
 
 def _create_string_dataset(obj: h5py.Group, key: str, strings: Union[List[str], pd.Series[str], str]) -> None:
