@@ -3,6 +3,7 @@ from typing import Union
 from numpy.typing import ArrayLike
 from anndata import AnnData  # type: ignore
 import numpy as np
+from pathlib import Path
 import scipy.sparse as sp
 from .setup import _get_install_path
 import os
@@ -38,9 +39,9 @@ def _validate_counts(mat: Union[ArrayLike, sp.spmatrix])  -> None:
         Raises:
         ValueError: If the counts matrix is not valid.
         '''
-    if sp.issparse(mat) and not bool(np.isnan(mat.data).any() or np.isinf(mat.data).any()):
+    if sp.issparse(mat) and bool(np.isnan(mat.data).any() or np.isinf(mat.data).any()):
         raise ValueError('Counts matrix contains NaN! This is not compatible with loupe converter!')
-    if bool(np.isnan(mat).any() or np.isinf(mat).any()): # type: ignore
+    elif not sp.issparse(mat) and bool(np.isnan(mat).any() or np.isinf(mat).any()): # type: ignore
         #ignored due to weird ufunc mypy error
         raise ValueError('Counts matrix contains inf! This is not compatible with loupe converter!')
     
@@ -49,22 +50,22 @@ def _validate_anndata(anndata: AnnData, layer: str | None = None) -> None:
         raise ValueError('Input is not an AnnData object!')
     if not _validate_barcodes(anndata.obs.index):
         raise ValueError('Barcodes do not match the format required for loupeconverter!')
-    if anndata.obs.n_obs == 0:
+    if anndata.n_obs == 0:
         raise ValueError('No observations found in the anndata object!')
-    if anndata.var.n_vars == 0:
+    if anndata.n_vars == 0:
         raise ValueError('No vars found in the anndata object!')
     if layer is None:
         _validate_counts(anndata.X)
     else:
         _validate_counts(anndata.layers[layer])
-    if anndata.var.index.equals("").any():
+    if (anndata.var.index == "").any().any():
         raise ValueError('Empty vars found in the anndata object!')
     if anndata.obs.index.duplicated().any():
         raise ValueError('Duplicate barcodes found in the anndata object!')
     if anndata.var.index.duplicated().any():
         raise ValueError('Duplicate vars found in the anndata object!')
     
-def _get_loupe_path() -> str:
+def _get_loupe_path() -> Path:
     '''
     Returns the path to the default loupe-converter install location
     '''
