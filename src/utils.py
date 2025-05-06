@@ -4,6 +4,7 @@ from numpy.typing import ArrayLike
 from anndata import AnnData  # type: ignore
 import numpy as np
 import scipy.sparse as sp
+from setup import _get_install_path
 import os
 import platform
 import warnings
@@ -65,17 +66,14 @@ def _validate_anndata(anndata: AnnData, layer: str | None = None) -> None:
     
 def _get_loupe_path() -> str:
     '''
-    Returns the path to the loupeR binary
+    Returns the path to the default loupe-converter install location
     '''
-    if platform.system().startswith('linux'):
-        path = os.environ['HOME'] + '/.local/bin/loupe/louper'
-    elif platform.system().startswith('win'):
-        path = os.environ['LOCALAPPDATA'] + '/Programs/louper/louper.exe'
-    elif platform.system().startswith('darwin') or platform.system().startswith('apple'):
-        path = os.environ['HOME'] + '/Applications/loupe/louper.app'
-    else:
-        raise OSError('Operating system not supported')
+    path = _get_install_path()
+    path = path / 'loupe_converter'
+    if not os.path.exists(path):
+        raise ValueError('Loupe converter path does not exist')
     return path
+
 
 def _validate_obs(obs: DataFrame) -> DataFrame:
     """
