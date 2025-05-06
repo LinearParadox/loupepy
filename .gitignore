@@ -9,4 +9,6 @@ wheels/
 *.mypy_cache
 *.pytest_cache
 # Virtual environments
-.venv
+.venv/
+.git/
+.idea/
