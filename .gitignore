@@ -13,3 +13,5 @@ random_testing*
 .venv/
 .git/
 .idea/
+create_test_file.py
+test.h5ad

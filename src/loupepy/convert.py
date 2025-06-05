@@ -1,43 +1,47 @@
 import os
+from os import PathLike
+
 from anndata import AnnData # type: ignore
 import pandas as pd
 from scipy.sparse import csr_matrix
 import h5py # type: ignore
 from typing import Any, Union, List
 from array import array
+from numpy import ndarray
 from .utils import _validate_anndata, _validate_obs, _get_loupe_path
 
 
-def _create_string_dataset(obj: h5py.Group, key: str, strings: Union[List[str], pd.Series[str], str]) -> None:
+def _create_string_dataset(obj: h5py.Group, key: str, strings: List[str]|pd.Series|str|pd.Index) -> None:
     '''
     Creates a dataset in the h5 file with the given strings
     '''
     if len(strings) == 0:
         max_len = 1
-    elif isinstance(strings, pd.Series):
-        strings = strings.tolist()
-        max_len = max(len(s) for s in strings)
     elif isinstance(strings, str):
         max_len = len(strings)
+        strings = [strings]
+    elif isinstance(strings, pd.Series) or isinstance(strings, pd.Index):
+        strings = strings.astype(str)
+        strings = strings.to_list()
+        max_len = max(len(s) for s in strings)
     else:
         max_len = max(len(s) for s in strings)
     dtype = h5py.string_dtype(encoding='ascii', length=max_len)
-    d=obj.create_dataset(key, strings, dtype=dtype)
-    d.close()
+    d=obj.create_dataset(name=key, data=strings, dtype=dtype)
 
-def _write_matrix(f: h5py.File, matrix: csr_matrix, features: pd.Series, barcodes: pd.Series, feature_ids: list[str]|pd.Series|None = None) -> None:
+def _write_matrix(f: h5py.File, matrix: csr_matrix|ndarray, features: pd.Series, barcodes: pd.Series, feature_ids: list[str]|pd.Series|None = None) -> None:
     '''
     Writes the matrix to the h5 file
     '''
+    if matrix is not csr_matrix:
+        matrix = csr_matrix(matrix)
     matrix_group = f.create_group('matrix')
     features_group = matrix_group.create_group('features')
     _create_string_dataset(matrix_group, 'barcodes', barcodes)
     matrix_group.create_dataset('data', data=matrix.data, dtype=int)
-    matrix_group.create_dataset('indices', data=matrix.indices, dtype=int)
-    matrix_group.create_dataset('indptr', data=matrix.indptr, dtype=int)
+    matrix_group.create_dataset('indices', data=matrix.indices, dtype=int)  # type: ignore
+    matrix_group.create_dataset('indptr', data=matrix.indptr, dtype=int)  # type: ignore
     matrix_group.create_dataset('shape', data=matrix.shape, dtype=int)
-    matrix_group.close()
-    _create_string_dataset(features, 'id', features)
     if feature_ids is None:
         feature_ids = [f"feature_{i}" for i in range(1, len(features) + 1)]
     if len(feature_ids) != len(features):
@@ -46,7 +50,6 @@ def _write_matrix(f: h5py.File, matrix: csr_matrix, features: pd.Series, barcode
     _create_string_dataset(features_group, 'id', feature_ids)
     _create_string_dataset(features_group, 'feature_type', ["Gene Expression"] * len(features))
     _create_string_dataset(features_group, "_all_tag_keys", "")
-    features_group.close()
 
 def _write_clusters(f: h5py.File, obs: pd.DataFrame) -> None:
     '''
@@ -60,10 +63,8 @@ def _write_clusters(f: h5py.File, obs: pd.DataFrame) -> None:
         _create_string_dataset(group, "name", [i])
         _create_string_dataset(group, "group_names", cluster.cat.categories.tolist())
         group.create_dataset("assignments", data=cluster.cat.codes, dtype=int)
-        group.create_dataset("score", 0.0)
+        group.create_dataset("score", [0.0])
         _create_string_dataset(group, "clustering_type", ["unknown"])
-        group.close()
-    cluster_group.close()
 
 def _write_projection(f: h5py.Group, dim: array, name: str) -> None:
     '''
@@ -78,10 +79,9 @@ def _write_projection(f: h5py.Group, dim: array, name: str) -> None:
     _create_string_dataset(projection_group, "name", name)
     _create_string_dataset(projection_group, "method", name)
     projection_group.create_dataset("data", data=dim)
-    projection_group.close()
 
-def create_loupe(anndata: AnnData, output_file:str, layer: str | None = None, tmp_file: str="tmp.h5ad",
-                 loupe_converter_path: str | None = None, dims: list[str] | None = None,
+def create_loupe(anndata: AnnData, output_file:str, layer: str | None = None, tmp_file: str="tmp.h5",
+                 loupe_converter_path: str | None | PathLike = None, dims: list[str] | None = None,
                  obs_keys: list[str] | None=None, 
                  feature_ids: list["str"]|pd.Series|None = None) -> None:
     ''''
@@ -101,8 +101,8 @@ def create_loupe(anndata: AnnData, output_file:str, layer: str | None = None, tm
         ValueError: If the obs keys are not valid.
         ValueError: If the feature ids are not valid.
     '''
-    if not os.path.exists(os.path.basename(output_file)):
-        raise ValueError('Output file does not exist')
+    #if not os.path.exists(os.path.basename(output_file)):
+    #    raise ValueError('Output file does not exist')
     if loupe_converter_path is None:
         loupe_converter_path = _get_loupe_path()
     if not os.path.exists(loupe_converter_path):
@@ -134,7 +134,6 @@ def create_loupe(anndata: AnnData, output_file:str, layer: str | None = None, tm
                 raise ValueError(f'{n} is not a valid projection')
             dim = anndata.obsm[n]
             _write_projection(projections, dim, n)
-        projections.close()
         f.close()
 
         

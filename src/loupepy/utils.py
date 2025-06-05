@@ -87,9 +87,8 @@ def _validate_obs(obs: DataFrame) -> DataFrame:
 
     for col in obs.columns:
         if not obs[col].dtype == 'category':
-            obs[col] = obs[col].astype('category')
-            warnings.warn(f'Column {col} was not a category and has been converted to a category')
-        if len(obs[col].cat.categories) > 32768:
+            obs.drop(col, axis=1, inplace=True)
+        elif len(obs[col].cat.categories) > 32768:
             warnings.warn(f'Column {col} has more than 32768 categories, skipping')
             obs.drop(col, axis=1, inplace=True)
     return obs
