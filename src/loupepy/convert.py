@@ -3,7 +3,7 @@ from os import PathLike
 
 from anndata import AnnData # type: ignore
 import pandas as pd
-from scipy.sparse import csr_matrix
+from scipy.sparse import csr_matrix, csc_matrix
 import h5py # type: ignore
 from typing import Any, Union, List
 from array import array
@@ -27,18 +27,21 @@ def _create_string_dataset(obj: h5py.Group, key: str, strings: List[str]|pd.Seri
     else:
         max_len = max(len(s) for s in strings)
     dtype = h5py.string_dtype(encoding='ascii', length=max_len)
-    d=obj.create_dataset(name=key, data=strings, dtype=dtype)
+    if strings == "":
+        #for the special case of an empty string
+        #matches r behavior
+        d=obj.create_dataset(name=key, dtype=dtype, shape=(0,))
+    else:
+        d=obj.create_dataset(name=key, data=strings, dtype=dtype)
 
-def _write_matrix(f: h5py.File, matrix: csr_matrix|ndarray, features: pd.Series, barcodes: pd.Series, feature_ids: list[str]|pd.Series|None = None) -> None:
+def _write_matrix(f: h5py.File, matrix: csc_matrix, features: pd.Series, barcodes: pd.Series, feature_ids: list[str]|pd.Series|None = None) -> None:
     '''
     Writes the matrix to the h5 file
     '''
-    if matrix is not csr_matrix:
-        matrix = csr_matrix(matrix)
     matrix_group = f.create_group('matrix')
     features_group = matrix_group.create_group('features')
     _create_string_dataset(matrix_group, 'barcodes', barcodes)
-    matrix_group.create_dataset('data', data=matrix.data, dtype=int)
+    matrix_group.create_dataset('data', data=matrix.data, dtype='i4') # loupe expects int32
     matrix_group.create_dataset('indices', data=matrix.indices, dtype=int)  # type: ignore
     matrix_group.create_dataset('indptr', data=matrix.indptr, dtype=int)  # type: ignore
     matrix_group.create_dataset('shape', data=matrix.shape, dtype=int)
@@ -63,8 +66,8 @@ def _write_clusters(f: h5py.File, obs: pd.DataFrame) -> None:
         _create_string_dataset(group, "name", [i])
         _create_string_dataset(group, "group_names", cluster.cat.categories.tolist())
         group.create_dataset("assignments", data=cluster.cat.codes, dtype=int)
-        group.create_dataset("score", [0.0])
-        _create_string_dataset(group, "clustering_type", ["unknown"])
+        group.create_dataset(name="score", shape=(1,), data=[0.0])
+        _create_string_dataset(group, "clustering_type", "unknown")
 
 def _write_projection(f: h5py.Group, dim: array, name: str) -> None:
     '''
@@ -78,7 +81,7 @@ def _write_projection(f: h5py.Group, dim: array, name: str) -> None:
     projection_group = f.create_group(name)
     _create_string_dataset(projection_group, "name", name)
     _create_string_dataset(projection_group, "method", name)
-    projection_group.create_dataset("data", data=dim)
+    projection_group.create_dataset("data", data=dim.T)
 
 def create_loupe(anndata: AnnData, output_file:str, layer: str | None = None, tmp_file: str="tmp.h5",
                  loupe_converter_path: str | None | PathLike = None, dims: list[str] | None = None,
@@ -122,9 +125,9 @@ def create_loupe(anndata: AnnData, output_file:str, layer: str | None = None, tm
         features = anndata.var_names
         barcodes = anndata.obs_names
         if layer is None:
-            _write_matrix(f, anndata.X.T, features, barcodes, feature_ids)
+            _write_matrix(f, csc_matrix(anndata.X.T), features, barcodes, feature_ids)
         else:
-            _write_matrix(f, anndata.layers[layer].T, features, barcodes, feature_ids)
+            _write_matrix(f, csc_matrix(anndata.layers[layer].T), features, barcodes, feature_ids)
         _write_clusters(f, obs)
         projections = f.create_group('projections')
         if dims is None:
