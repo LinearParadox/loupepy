@@ -1,3 +1,4 @@
+import os
 import pandas as pd
 import pytest
 import scanpy as sc  # type: ignore
@@ -24,7 +25,10 @@ def reverse_engineer_counts(adata, n_counts_column="n_counts"):
 
 @pytest.fixture
 def mock_data():
-    return reverse_engineer_counts(sc.datasets.pbmc3k_processed())
+    adata_path = os.path.join(
+        os.path.dirname(__file__), "data", "pbmc3k_processed.h5ad"
+    )
+    return reverse_engineer_counts(sc.read_h5ad(adata_path))
 
 @pytest.fixture
 def generate_long_df():

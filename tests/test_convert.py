@@ -47,7 +47,10 @@ def get_equivalent_matrix(file):
 @pytest.fixture(scope="module")
 def adata_for_loupe():
     """Provides the AnnData object for Loupe conversion."""
-    adata_raw = sc.datasets.pbmc3k_processed().raw.to_adata()
+    adata_path = os.path.join(
+        os.path.dirname(__file__), "data", "pbmc3k_processed.h5ad"
+    )
+    adata_raw = sc.read_h5ad(adata_path).raw.to_adata()
     return reverse_engineer_counts(adata_raw)
 
 @pytest.fixture(scope="module")
