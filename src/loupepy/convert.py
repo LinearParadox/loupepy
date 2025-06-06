@@ -119,7 +119,7 @@ def create_loupe_from_anndata(anndata: AnnData, output_cloupe: str | PathLike = 
         ValueError: If the obs keys are not valid.
         ValueError: If the feature ids are not valid.
     '''
-    if loupe_converter_path is None:
+    if loupe_converter_path is None and not test_mode:
         loupe_converter_path = _get_loupe_path()
     if not os.path.exists(loupe_converter_path) and not test_mode:
         if loupe_converter_path is None:
