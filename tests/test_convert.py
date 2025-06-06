@@ -47,13 +47,14 @@ def get_equivalent_matrix(file):
 @pytest.fixture(scope="module")
 def adata_for_loupe():
     """Provides the AnnData object for Loupe conversion."""
-    adata_raw = sc.datasets.pbmc3k_processed().raw.to_adata()
+    file = os.path.join(os.path.dirname(__file__), "data", "pbmc3k_processed.h5ad")
+    adata_raw = sc.read_h5ad(file).raw.to_adata()
     return reverse_engineer_counts(adata_raw)
 
 @pytest.fixture(scope="module")
 def valid_h5():
     """Provides the path to the expected HDF5 file."""
-    return os.path.join("data", "loupeR_output.h5")
+    return os.path.join(os.path.dirname(__file__), "data", "loupeR_output.h5")
 
 @pytest.fixture(scope="module")
 def generate_h5_file(adata_for_loupe, tmp_path_factory):
@@ -61,10 +62,6 @@ def generate_h5_file(adata_for_loupe, tmp_path_factory):
     Generates the Loupe HDF5 file and returns its path.
     Uses tmp_path_factory for a module-scoped temporary directory.
     """
-    # Use tmp_path_factory for a path that persists for the module scope
-    # if multiple tests in the module need this exact generated file.
-    # If each test should generate its own, use tmp_path directly in the test.
-    # For this example, let's assume one generation is fine for the module.
     output_dir = tmp_path_factory.mktemp("generated_h5_data")
     generated_file_path = output_dir / "loupepy.h5"
     create_loupe_from_anndata(adata_for_loupe, tmp_file=generated_file_path, test_mode=True)
