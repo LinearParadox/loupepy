@@ -1,0 +1,100 @@
+import pytest
+import h5py
+import os
+import numpy as np
+import pandas as pd
+import scanpy as sc
+from scipy.sparse import diags
+import anndata
+from scipy.sparse import csc_matrix
+from loupepy.convert import create_loupe_from_anndata
+
+def reverse_engineer_counts(adata, n_counts_column="n_counts"):
+    n_counts = adata.obs[n_counts_column].values
+    counts_matrix = adata.X.expm1()
+    counts = diags(n_counts) * counts_matrix
+    adata.X = counts
+    return adata
+
+def cluster_dict(levels):
+    """
+    Create a dictionary mapping cluster levels to their assignments.
+    """
+    mapping_dict = {}
+    for level, type in enumerate(levels):
+        mapping_dict[level] = str(type.astype(str))
+    return mapping_dict
+
+def get_equivalent_matrix(file):
+    """
+    Extracts the equivalent matrix from the HDF5 file.
+    """
+    mat = csc_matrix((file['matrix/data'], file['matrix/indices'], file['matrix/indptr']),
+                           shape=file['matrix/shape']).toarray()
+    valid_barcodes = np.array(file['matrix/barcodes']).astype(str)
+    valid_features=np.array(file['matrix/features/name']).astype(str)
+    sort_col = np.argsort(valid_barcodes)
+    sort_row = np.argsort(valid_features)
+    mat=mat[:, sort_col]
+    mat=mat[sort_row, :]
+    return mat
+
+
+@pytest.fixture(scope="module")
+def adata_for_loupe():
+    """Provides the AnnData object for Loupe conversion."""
+    adata_raw = sc.datasets.pbmc3k_processed().raw.to_adata()
+    return reverse_engineer_counts(adata_raw)
+
+@pytest.fixture(scope="module")
+def valid_h5():
+    """Provides the path to the expected HDF5 file."""
+    return os.path.join("data", "loupeR_output.h5")
+
+@pytest.fixture(scope="module")
+def generate_h5_file(adata_for_loupe, tmp_path_factory):
+    """
+    Generates the Loupe HDF5 file and returns its path.
+    Uses tmp_path_factory for a module-scoped temporary directory.
+    """
+    # Use tmp_path_factory for a path that persists for the module scope
+    # if multiple tests in the module need this exact generated file.
+    # If each test should generate its own, use tmp_path directly in the test.
+    # For this example, let's assume one generation is fine for the module.
+    output_dir = tmp_path_factory.mktemp("generated_h5_data")
+    generated_file_path = output_dir / "loupepy.h5"
+    create_loupe_from_anndata(adata_for_loupe, tmp_file=generated_file_path, test_mode=True)
+    return str(generated_file_path)
+
+
+def test_obs(generate_h5_file, valid_h5):
+    """Test if the obs data is correctly written to the HDF5 file."""
+    with h5py.File(valid_h5, "r") as valid:
+        with h5py.File(generate_h5_file, "r") as generated:
+            valid_levels=cluster_dict(valid["clusters/louvain/group_names"])
+            generated_levels=cluster_dict(generated["clusters/louvain/group_names"])
+            valid_types = pd.Series(valid["clusters/louvain/assignments"]).map(valid_levels).value_counts()
+            generated_types = pd.Series(generated["clusters/louvain/assignments"]).map(generated_levels).value_counts()
+            assert (valid_types == generated_types).all()
+
+def test_projections(generate_h5_file, valid_h5):
+    """Test if the projections data is correctly written to the HDF5 file."""
+    with h5py.File(valid_h5, "r") as valid:
+        with h5py.File(generate_h5_file, "r") as generated:
+            generated_projections = pd.DataFrame(data=np.array(generated['projections/X_umap/data']).T,
+                                             index=np.array(generated['matrix/barcodes']).astype(str))
+            valid_projections = pd.DataFrame(data=np.array(valid['projections/Xumap_/data']).T,
+                                                                index=np.array(valid['matrix/barcodes']).astype(str))
+            generated_projections.sort_index(inplace=True)
+            valid_projections.sort_index(inplace=True)
+            assert valid_projections.equals(generated_projections)
+
+def test_matrix(generate_h5_file, valid_h5):
+    """Test if the matrix data is correctly written to the HDF5 file."""
+    with h5py.File(valid_h5, "r") as valid:
+        with h5py.File(generate_h5_file, "r") as generated:
+            valid_matrix = get_equivalent_matrix(valid)
+            generated_matrix = get_equivalent_matrix(generated)
+            assert np.array_equal(valid_matrix, generated_matrix)
+
+

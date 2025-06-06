@@ -1,14 +1,15 @@
 import os
 from os import PathLike
-
+from .setup import setup
 from anndata import AnnData # type: ignore
 import pandas as pd
 from scipy.sparse import csr_matrix, csc_matrix
 import h5py # type: ignore
 from typing import Any, Union, List
 from array import array
+import logging
 from numpy import ndarray
-from .utils import _validate_anndata, _validate_obs, _get_loupe_path
+from .utils import _validate_anndata, _validate_obs, _get_loupe_path, _validate_obsm
 
 
 def _create_string_dataset(obj: h5py.Group, key: str, strings: List[str]|pd.Series|str|pd.Index) -> None:
@@ -34,10 +35,15 @@ def _create_string_dataset(obj: h5py.Group, key: str, strings: List[str]|pd.Seri
     else:
         d=obj.create_dataset(name=key, data=strings, dtype=dtype)
 
-def _write_matrix(f: h5py.File, matrix: csc_matrix, features: pd.Series, barcodes: pd.Series, feature_ids: list[str]|pd.Series|None = None) -> None:
+def _write_matrix(f: h5py.File, matrix: csc_matrix,
+                  features: pd.Series|pd.Index, barcodes: pd.Index|pd.Series,
+                  feature_ids: list[str]|pd.Series|None = None) -> None:
     '''
     Writes the matrix to the h5 file
     '''
+    if not isinstance(matrix, csc_matrix):
+        f.close()
+        raise ValueError('Matrix must be a csc_matrix')
     matrix_group = f.create_group('matrix')
     features_group = matrix_group.create_group('features')
     _create_string_dataset(matrix_group, 'barcodes', barcodes)
@@ -83,60 +89,126 @@ def _write_projection(f: h5py.Group, dim: array, name: str) -> None:
     _create_string_dataset(projection_group, "method", name)
     projection_group.create_dataset("data", data=dim.T)
 
-def create_loupe(anndata: AnnData, output_file:str, layer: str | None = None, tmp_file: str="tmp.h5",
-                 loupe_converter_path: str | None | PathLike = None, dims: list[str] | None = None,
-                 obs_keys: list[str] | None=None, 
-                 feature_ids: list["str"]|pd.Series|None = None) -> None:
+def create_loupe_from_anndata(anndata: AnnData, output_cloupe: str | PathLike = "cloupe.cloupe",
+                              layer: str | None = None, tmp_file: str|PathLike ="tmp.h5",
+                              loupe_converter_path: str | None | PathLike = None, dims: list[str] | None = None,
+                              obs_keys: list[str] | None=None, feature_ids: list["str"]|pd.Series|None = None,
+                              strict_checking: bool = False, clean_tmp_file: bool=True, force: bool = False,
+                              test_mode=False) -> None:
     ''''
     Creates a temp h5 file and calls the loupe converter executable for the conversion
     Args:
+
         anndata (AnnData): AnnData object to convert.
-        output_file (str): Path to the output file.
+        output_cloupe (str): Path to the output file.
         layer (str | None, optional): Layer to use. Defaults to None.
         tmp_file (str, optional): Path to the temp file. Defaults to "tmp.h5ad".
         loupe_converter_path (str | None, optional): Path to the loupe converter executable. Defaults to None.
         dims (list[str] | None, optional): Dimensions to use. Defaults to None.
-        obs_keys (list[str] | None, optional): Keys of obs to use. Defaults to None.
+        obs_keys (list[str] | None, optional): Keys of obs to subset to. Defaults to None.
         feature_ids (list["str"]|pd.Series|None, optional): Feature ids. Defaults to None.
+        strict_checking (bool, optional): Whether to perform strict checking of the AnnData object. Defaults to False.
+        If strict_checking is True, the function will raise an error if projections are not of the (ncells, 2) or if
+        categoricals have more than 32768 categories. Default behavior is to drop these without an error.
+        clean_tmp_file: whether to delete the temporary file after conversion. Defaults to True.
+        force: whether to overwrite the cloupe file if it already exists. Defaults to False.
+        test_mode: If True, will not run the loupe converter and will only write the h5 file.
     Raises:
         ValueError: If the output file does not exist.
         ValueError: If the layer is not valid.
         ValueError: If the obs keys are not valid.
         ValueError: If the feature ids are not valid.
     '''
-    #if not os.path.exists(os.path.basename(output_file)):
-    #    raise ValueError('Output file does not exist')
+    if loupe_converter_path is None:
+        loupe_converter_path = _get_loupe_path()
+    if not os.path.exists(loupe_converter_path) and not test_mode:
+        if loupe_converter_path is None:
+            raise ValueError('Loupe converter Not found at default install location.'
+                             'Please run loupepy.setup() to install it or provide a path to the executable.')
+        else:
+            raise ValueError(f'Loupe converter not found at {loupe_converter_path}. Please provide a valid path.')
+    if test_mode:
+        logging.warning("Test mode is enabled. Loupe file will not be created.")
+        clean_tmp_file = False
+    _validate_anndata(anndata, layer)
+    if obs_keys:
+        obs = anndata.obs.loc[:, obs_keys].copy()
+        _validate_obs(obs)
+    else:
+        obs = anndata.obs.copy()
+        _validate_obs(obs)
+    if layer is None:
+        mat = csc_matrix(anndata.X.T)
+    else:
+        mat = csc_matrix(anndata.layers[layer].T)
+    projections = _validate_obsm(anndata.obsm, obsm_keys=dims, strict=strict_checking)
+    if len(projections) == 0:
+        raise ValueError("No valid projections!")
+    projections = {k:v for k, v in anndata.obsm.items() if k in projections}
+    create_loupe(mat, obs, anndata.var, projections, tmp_file,
+                 loupe_converter_path, output_path=output_cloupe, clean_tmp_file=clean_tmp_file,
+                 feature_ids=feature_ids, force=force)
+
+
+def create_loupe(mat: csc_matrix,
+                obs: pd.DataFrame,
+                var: pd.DataFrame,
+                obsm: dict[str, ndarray],
+                tmp_file_path: PathLike|str,
+                loupe_converter_path: str|PathLike|None = None,
+                output_path: PathLike|str = "cloupe.cloupe",
+                clean_tmp_file: bool = True,
+                force: bool = False,
+                feature_ids: list[str]|pd.Series|None = None) -> None:
+    '''
+    Creates a loupe file from a matrix, obs, var and obsm.
+    Args:
+        mat: csc matrix of shape (n_features, n_cells)
+        obs: obs dataframe of shape (n_cells, n_obs)
+        var: var (genes) dataframe of shape (n_features, n_vars)
+        obsm: dimension reductions or other projections
+        tmp_file_path: where to write the temporary h5 file
+        loupe_converter_path: path to the loupe converter executable. If None, will use the default path.
+        output_path: path to the output loupe file.
+        clean_tmp_file: whether to delete the temporary file after conversion
+        force: whether to overwrite the cloupe file if it already exists
+        feature_ids: Feature ids to use. If None, will use the default feature ids.
+        Seems to be not used in loupe browser
+    Returns:
+        None
+    '''
+    _write_hdf5(mat, obs, var, obsm, tmp_file_path, feature_ids=feature_ids)
     if loupe_converter_path is None:
         loupe_converter_path = _get_loupe_path()
     if not os.path.exists(loupe_converter_path):
         raise ValueError('Loupe converter path does not exist')
-    if layer is None:
-        _validate_anndata(anndata)
-    else:
-        _validate_anndata(anndata, layer)
-    if obs_keys:
-        obs = anndata.obs.loc[:, obs_keys]
-        obs = _validate_obs(obs)
-    else:
-        obs = anndata.obs
-        obs = _validate_obs(obs)
+    cmd = f"{loupe_converter_path} create --input={tmp_file_path} --output={output_path}"
+    if force:
+        cmd += " --force"
+    os.system(cmd)
+    if clean_tmp_file:
+        os.remove(tmp_file_path)
 
-    with h5py.File(tmp_file, 'w') as f:
-        features = anndata.var_names
-        barcodes = anndata.obs_names
-        if layer is None:
-            _write_matrix(f, csc_matrix(anndata.X.T), features, barcodes, feature_ids)
-        else:
-            _write_matrix(f, csc_matrix(anndata.layers[layer].T), features, barcodes, feature_ids)
-        _write_clusters(f, obs)
-        projections = f.create_group('projections')
-        if dims is None:
-            dims = anndata.obsm.keys()
-        for n in dims:
-            if n not in anndata.obsm.keys():
-                raise ValueError(f'{n} is not a valid projection')
-            dim = anndata.obsm[n]
-            _write_projection(projections, dim, n)
-        f.close()
 
-        
+
+def _write_hdf5(mat: csc_matrix,
+                obs: pd.DataFrame,
+                var: pd.DataFrame,
+                obsm: dict[str, ndarray],
+                file_path: PathLike|str,
+                feature_ids: list[str]|pd.Series|None = None,) -> None:
+    try:
+        with h5py.File(file_path, 'w') as f:
+            features = var.index
+            barcodes = obs.index
+            _write_matrix(f, mat, features, barcodes, feature_ids)
+            _write_clusters(f, obs)
+            projections = f.create_group('projections')
+            for n in obsm.keys():
+                _write_projection(projections, obsm[n], n)
+            f.close()
+    except:
+        logging.error("Something went wrong while writing the h5 file. Please check the input data.")
+        os.remove(file_path)
+
+
