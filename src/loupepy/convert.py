@@ -9,7 +9,7 @@ from typing import Any, Union, List
 from array import array
 import logging
 from numpy import ndarray
-from .utils import _validate_anndata, _validate_obs, _get_loupe_path, _validate_obsm
+from .utils import _validate_anndata, _validate_obs, _get_loupe_path, _validate_obsm, get_obs, get_obsm, get_count_matrix
 
 
 def _create_string_dataset(obj: h5py.Group, key: str, strings: List[str]|pd.Series|str|pd.Index) -> None:
@@ -26,7 +26,7 @@ def _create_string_dataset(obj: h5py.Group, key: str, strings: List[str]|pd.Seri
         strings = strings.to_list()
         max_len = max(len(s) for s in strings)
     else:
-        max_len = max(len(s) for s in strings)
+        max_len = max(len(str(s)) for s in strings)
     dtype = h5py.string_dtype(encoding='ascii', length=max_len)
     if strings == "":
         #for the special case of an empty string
@@ -131,35 +131,27 @@ def create_loupe_from_anndata(anndata: AnnData, output_cloupe: str | PathLike = 
         logging.warning("Test mode is enabled. Loupe file will not be created.")
         clean_tmp_file = False
     _validate_anndata(anndata, layer)
-    if obs_keys:
-        obs = anndata.obs.loc[:, obs_keys].copy()
-        _validate_obs(obs)
-    else:
-        obs = anndata.obs.copy()
-        _validate_obs(obs)
-    if layer is None:
-        mat = csc_matrix(anndata.X.T)
-    else:
-        mat = csc_matrix(anndata.layers[layer].T)
-    projections = _validate_obsm(anndata.obsm, obsm_keys=dims, strict=strict_checking)
+    obs = get_obs(anndata, obs_keys=obs_keys, strict=strict_checking)
+    mat = get_count_matrix(anndata, layer=layer)
+    projections = get_obsm(anndata, obsm_keys=dims, strict=strict_checking)
     if len(projections) == 0:
         raise ValueError("No valid projections!")
-    projections = {k:v for k, v in anndata.obsm.items() if k in projections}
     create_loupe(mat, obs, anndata.var, projections, tmp_file,
                  loupe_converter_path, output_path=output_cloupe, clean_tmp_file=clean_tmp_file,
-                 feature_ids=feature_ids, force=force)
+                 feature_ids=feature_ids, force=force, test_mode=test_mode)
 
 
 def create_loupe(mat: csc_matrix,
-                obs: pd.DataFrame,
-                var: pd.DataFrame,
-                obsm: dict[str, ndarray],
-                tmp_file_path: PathLike|str,
-                loupe_converter_path: str|PathLike|None = None,
-                output_path: PathLike|str = "cloupe.cloupe",
-                clean_tmp_file: bool = True,
-                force: bool = False,
-                feature_ids: list[str]|pd.Series|None = None) -> None:
+                 obs: pd.DataFrame,
+                 var: pd.DataFrame,
+                 obsm: dict[str, ndarray],
+                 tmp_file: PathLike | str,
+                 loupe_converter_path: str|PathLike|None = None,
+                 output_path: PathLike|str = "cloupe.cloupe",
+                 clean_tmp_file: bool = True,
+                 force: bool = False,
+                 feature_ids: list[str]|pd.Series|None = None,
+                 test_mode=False) -> None:
     '''
     Creates a loupe file from a matrix, obs, var and obsm.
     Args:
@@ -167,27 +159,30 @@ def create_loupe(mat: csc_matrix,
         obs: obs dataframe of shape (n_cells, n_obs)
         var: var (genes) dataframe of shape (n_features, n_vars)
         obsm: dimension reductions or other projections
-        tmp_file_path: where to write the temporary h5 file
+        tmp_file: where to write the temporary h5 file
         loupe_converter_path: path to the loupe converter executable. If None, will use the default path.
         output_path: path to the output loupe file.
         clean_tmp_file: whether to delete the temporary file after conversion
         force: whether to overwrite the cloupe file if it already exists
         feature_ids: Feature ids to use. If None, will use the default feature ids.
         Seems to be not used in loupe browser
+        test_mode: will not write a cloupe file. mainly used for testing
     Returns:
         None
     '''
-    _write_hdf5(mat, obs, var, obsm, tmp_file_path, feature_ids=feature_ids)
+    _write_hdf5(mat, obs, var, obsm, tmp_file, feature_ids=feature_ids)
+    if test_mode:
+        return
     if loupe_converter_path is None:
         loupe_converter_path = _get_loupe_path()
     if not os.path.exists(loupe_converter_path):
         raise ValueError('Loupe converter path does not exist')
-    cmd = f"{loupe_converter_path} create --input={tmp_file_path} --output={output_path}"
+    cmd = f"{loupe_converter_path} create --input={tmp_file} --output={output_path}"
     if force:
         cmd += " --force"
     os.system(cmd)
     if clean_tmp_file:
-        os.remove(tmp_file_path)
+        os.remove(tmp_file)
 
 
 

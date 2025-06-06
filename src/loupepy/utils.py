@@ -5,11 +5,11 @@ from anndata import AnnData  # type: ignore
 import numpy as np
 from pathlib import Path
 import scipy.sparse as sp
+import logging
 from scipy.sparse import csc_matrix
 from .setup import _get_install_path
 import os
 from numpy import ndarray
-import platform
 import warnings
 
 def _validate_barcodes(barcodes: Series) -> bool:
@@ -89,7 +89,11 @@ def _validate_obs(obs: DataFrame, strict=False) -> DataFrame:
 
     for col in obs.columns:
         if not obs[col].dtype == 'category':
+            if strict:
+                raise ValueError(f'Column {col} is not categorical, which is required for Loupe. '
+                                 f'Please check that this is truly categorical data.')
             obs.drop(col, axis=1, inplace=True)
+            logging.warning(f'Column {col} is not categorical, dropping from final obs dataframe.')
         elif len(obs[col].cat.categories) > 32768:
             if strict:
                 raise ValueError(f'Column {col} has more than 32768 categories, which '
@@ -149,7 +153,7 @@ def get_obs(anndata: AnnData, obs_keys: str|None = None, strict: bool = False) -
     """
     obs = anndata.obs.copy()
     if obs_keys:
-        obs = obs[:,obs_keys]
+        obs = obs.loc[:,obs_keys]
     _validate_obs(obs, strict)
     return obs
 
