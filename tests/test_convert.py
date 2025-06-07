@@ -5,7 +5,6 @@ import numpy as np
 import pandas as pd
 import scanpy as sc
 from scipy.sparse import diags
-import anndata
 from scipy.sparse import csc_matrix
 from loupepy.convert import create_loupe_from_anndata, create_loupe
 from loupepy.utils import get_obs, get_obsm, get_count_matrix

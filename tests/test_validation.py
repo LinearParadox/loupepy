@@ -54,5 +54,5 @@ def test_valid_anndata(mock_data):
 
 def test_invalid_index(mock_data):
     mock_data.obs = mock_data.obs.add_suffix("-abc", axis='index')
-    assert _validate_barcodes(mock_data.obs.index) == False
+    assert not _validate_barcodes(mock_data.obs.index)
 
