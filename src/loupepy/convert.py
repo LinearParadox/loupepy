@@ -118,14 +118,15 @@ def create_loupe_from_anndata(anndata: AnnData, output_cloupe: str | PathLike = 
         ValueError: If the obs keys are not valid.
         ValueError: If the feature ids are not valid.
     '''
-    if loupe_converter_path is None and not test_mode:
-        loupe_converter_path = _get_loupe_path()
-    if not os.path.exists(loupe_converter_path) and not test_mode:
+    if not test_mode:
         if loupe_converter_path is None:
-            raise ValueError('Loupe converter Not found at default install location.'
-                             'Please run loupepy.setup() to install it or provide a path to the executable.')
-        else:
-            raise ValueError(f'Loupe converter not found at {loupe_converter_path}. Please provide a valid path.')
+            loupe_converter_path = _get_loupe_path()
+        if not os.path.exists(loupe_converter_path) and not test_mode:
+            if loupe_converter_path is None:
+                raise ValueError('Loupe converter Not found at default install location.'
+                                 'Please run loupepy.setup() to install it or provide a path to the executable.')
+            else:
+                raise ValueError(f'Loupe converter not found at {loupe_converter_path}. Please provide a valid path.')
     if test_mode:
         logging.warning("Test mode is enabled. Loupe file will not be created.")
         clean_tmp_file = False
@@ -172,10 +173,11 @@ def create_loupe(mat: csc_matrix,
     _write_hdf5(mat, obs, var, obsm, tmp_file, feature_ids=feature_ids)
     if test_mode:
         return
-    if loupe_converter_path is None:
-        loupe_converter_path = _get_loupe_path()
-    if not os.path.exists(loupe_converter_path):
-        raise ValueError('Loupe converter path does not exist')
+    if not test_mode:
+        if loupe_converter_path is None:
+            loupe_converter_path = _get_loupe_path()
+        if not os.path.exists(loupe_converter_path):
+            raise ValueError('Loupe converter path does not exist')
     cmd = f"{loupe_converter_path} create --input={tmp_file} --output={output_path}"
     if force:
         cmd += " --force"
