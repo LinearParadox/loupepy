@@ -9,6 +9,9 @@ dependencies = [
     "certifi>=2025.4.26",
 ]
 
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]
+
 [project.scripts]
 loupepy = "loupepy:main"
 

@@ -1,15 +1,14 @@
 import os
 from os import PathLike
-from .setup import setup
 from anndata import AnnData # type: ignore
 import pandas as pd
-from scipy.sparse import csr_matrix, csc_matrix
+from scipy.sparse import csc_matrix
 import h5py # type: ignore
-from typing import Any, Union, List
+from typing import List
 from array import array
 import logging
 from numpy import ndarray
-from .utils import _validate_anndata, _validate_obs, _get_loupe_path, _validate_obsm, get_obs, get_obsm, get_count_matrix
+from .utils import _validate_anndata, _get_loupe_path, get_obs, get_obsm, get_count_matrix
 
 
 def _create_string_dataset(obj: h5py.Group, key: str, strings: List[str]|pd.Series|str|pd.Index) -> None:
@@ -31,9 +30,9 @@ def _create_string_dataset(obj: h5py.Group, key: str, strings: List[str]|pd.Seri
     if strings == "":
         #for the special case of an empty string
         #matches r behavior
-        d=obj.create_dataset(name=key, dtype=dtype, shape=(0,))
+        obj.create_dataset(name=key, dtype=dtype, shape=(0,))
     else:
-        d=obj.create_dataset(name=key, data=strings, dtype=dtype)
+        obj.create_dataset(name=key, data=strings, dtype=dtype)
 
 def _write_matrix(f: h5py.File, matrix: csc_matrix,
                   features: pd.Series|pd.Index, barcodes: pd.Index|pd.Series,
@@ -202,7 +201,7 @@ def _write_hdf5(mat: csc_matrix,
             for n in obsm.keys():
                 _write_projection(projections, obsm[n], n)
             f.close()
-    except:
+    except ValueError:
         logging.error("Something went wrong while writing the h5 file. Please check the input data.")
         os.remove(file_path)
 
