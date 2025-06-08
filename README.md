@@ -1,5 +1,9 @@
-from loupepy import get_count_matrixWhile this tool is independently maintained and not officially supported by 10x Genomics, it relies on code from [LoupeR](https://github.com/10xGenomics/loupeR), an R package developed by 10x Genomics. LoupeR is licensed for use only in connection with data generated from 10x Genomics products. For more information, please refer to the [10x End User Software License](https://www.10xgenomics.com/legal/end-user-software-license-agreement). By using the setup function of this tool, you will need to agree to this license with an interactive prompt. 
+While this tool is independently maintained and not officially supported by 10x Genomics, it relies on code from [LoupeR](https://github.com/10xGenomics/loupeR), an R package developed by 10x Genomics. LoupeR is licensed for use only in connection with data generated from 10x Genomics products. For more information, please refer to the [10x End User Software License](https://www.10xgenomics.com/legal/end-user-software-license-agreement). By using the setup function of this tool, you will need to agree to this license with an interactive prompt. 
 
+## Installation
+
+This can be simply installed from pip, using:  
+`pip install loupepy`
 
 ## Main Functions
 
