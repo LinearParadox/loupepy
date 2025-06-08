@@ -5,6 +5,22 @@ While this tool is independently maintained and not officially supported by 10x 
 This can be simply installed from pip, using:  
 `pip install loupepy`
 
+You must run the setup function and agree to the eula. This only needs to be done once.
+
+```{py}
+from loupepy import setup
+
+setup()
+
+> This tool is independently maintained, but utilizes 10x genomics tools to perform conversions
+> By using this tool, you agree to the 10X Genomics End User License Agreement (https://www.10xgenomics.com/legal/end-user-software-license-agreement)
+> Do you agree to the terms of the EULA? (yes/y or no/n)
+
+y
+```
+Will install the tool to the default program install directory in your OS. A custom path for the install can also be provided, however you will need to include it in subsequent commands using the:
+`loupe_converter_path` argument.
+
 ## Main Functions
 
 ### `create_loupe_from_anndata(anndata, output_cloupe="cloupe.cloupe", layer=None, ...)`
