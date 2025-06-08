@@ -2,7 +2,9 @@ import platform
 from urllib.request import urlretrieve
 import hashlib
 from pathlib import Path
+import logging
 import os
+from typing import Union
 OPERATING_SYSTEM = platform.system()
 
 def _get_checksum() -> tuple[str, str]:
@@ -57,37 +59,45 @@ def _download_loupe_converter(path: Path) -> None:
     link = _md5_checksum()
     urlretrieve(link, path)
     path.chmod(0o755)
-    print(path)
+    logging.log(logging.INFO, f"loupe converter binary successfully downloaded to {path}")
 
-def setup(path: Path | None | str = None) -> None:
+def setup(path: Union[os.PathLike[str], Path, None] = None) -> None:
     '''
-    Downloads the loupe converter binary to the specified path.
+    Downloads the loupe converter binary to the specified directory.
     If no path is specified, it will be downloaded to the default location for the operating system.
+    Args:
+        path (Union[os.PathLike[str], Path, None]): The path to download the loupe converter binary to.
+            If None, it will be downloaded to the default location for the operating system.
     '''
     if path is None:
         path = _get_install_path()
     if path is str:
         path = Path(path)
-    eula()
+    eula(path)
     _download_loupe_converter(path) # type: ignore
 
 
 
 
 
-def eula() ->  None:
+def eula(path: Union[os.PathLike[str], Path, None] = None) ->  None:
     '''
     Prompts the user to agree to the EULA, as it is in the R version of the tool
     '''
     print("This tool is independently maintained,"
         " but utilizes 10x genomics tools to perform conversions")
     print("By using this tool, you agree to the 10X Genomics End User License Agreement "
-        "(https://www.10xgenomics.com/legal/end-user-software-license-agreement).")
-    print("Do you agree to the terms of the EULA? (yes/no)")
-    response = input()
-    if response.lower() != 'yes':
+        "(https://www.10xgenomics.com/legal/end-user-software-license-agreement ).")
+    print("Do you agree to the terms of the EULA? (yes/y or no/n)")
+    response = input("Do you agree to the terms of the EULA? (yes/y or no/n)")
+    while response.lower() not in ["yes", "y", "no", "n"]:
+        response = input("Do you agree to the terms of the EULA? (yes/y or no/n)")
+    if response.lower() in  ["no", "n"]:
         raise OSError('You must agree to the EULA to use this tool')
-    path = _get_install_path()
+    if path is None:
+        path = _get_install_path()
+    if not isinstance(path, Path):
+        path = Path(path)
     path.mkdir(parents=False, exist_ok=True)
     path = path / 'eula'
     path.touch(exist_ok=True)
@@ -97,12 +107,16 @@ def eula() ->  None:
 
 
 
-def eula_reset() -> None:
+def eula_reset(path: Union[os.PathLike[str], Path, None] = None) -> None:
     '''
     Resets the EULA agreement
+    "
     '''
-    path = _get_install_path()
-    path = path / 'loupepy' / 'eula'
+    if path is None:
+        path = _get_install_path()
+    if not isinstance(path, Path):
+        path = Path(path)
+    path = path / 'eula'
     path.unlink()
     path=path.parent / 'loupe_converter'
     path.unlink(missing_ok=True)

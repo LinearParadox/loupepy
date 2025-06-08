@@ -1,11 +1,11 @@
 import os
 from os import PathLike
+
 from anndata import AnnData # type: ignore
 import pandas as pd
 from scipy.sparse import csc_matrix
 import h5py # type: ignore
 from typing import List
-from array import array
 import logging
 from numpy import ndarray
 from .utils import _validate_anndata, _get_loupe_path, get_obs, get_obsm, get_count_matrix
@@ -74,7 +74,7 @@ def _write_clusters(f: h5py.File, obs: pd.DataFrame) -> None:
         group.create_dataset(name="score", shape=(1,), data=[0.0])
         _create_string_dataset(group, "clustering_type", "unknown")
 
-def _write_projection(f: h5py.Group, dim: array, name: str) -> None:
+def _write_projection(f: h5py.Group, dim: ndarray, name: str) -> None:
     '''
     Writes the projections to the h5 file
 
