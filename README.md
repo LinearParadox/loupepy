@@ -23,6 +23,10 @@ Will install the tool to the default program install directory in your OS. A cus
 
 ## Main Functions
 
+### Notes
+
+There are some differences between this one and the R version. Mainly, the R version will throw an error if a categorical has too many categories, or a dimensionality reduction isn't 2 x n_cells.  Here, these are dropped with a warning. Enabling the strict parameter will mimic R's behavior.
+
 ### `create_loupe_from_anndata(anndata, output_cloupe="cloupe.cloupe", layer=None, ...)`
 
 Creates a Loupe Browser compatible `.cloupe` file from an `AnnData` object.
