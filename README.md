@@ -160,3 +160,9 @@ loupepy.setup()
 ### `eula_reset(path=None)`
 
 Resets the EULA agreement and removes the installed Loupe converter binary.
+
+## Acknowledgments
+
+A special thank you to the Lowy Lab for their support.
+Thank you to 10x Genomics for supporting this and allowing the use of their tool.
+
