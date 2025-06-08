@@ -101,7 +101,7 @@ def _validate_obs(obs: DataFrame, strict=False) -> DataFrame:
             warnings.warn(f'Column {col} has more than 32768 categories, skipping')
             obs.drop(col, axis=1, inplace=True)
 
-def _validate_obsm(obsm: dict[str, ndarray], obsm_keys: str|None = None, strict: bool = False) -> list[str]:
+def _validate_obsm(obsm: dict[str, ndarray], obsm_keys: list[str]|None = None, strict: bool = False) -> list[str]:
     """
     Validate the obsm dictionary.
     Args:

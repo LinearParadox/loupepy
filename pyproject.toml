@@ -1,13 +1,25 @@
 [project]
 name = "loupepy"
 version = "0.1.0"
-description = "Add your description here"
+authors = [
+  { name="Alexei Martsinkovskiy", email="alexei.martsinkovskiy@gmail.com" },
+]
+description = "A python package for generating 10x cloupe files from anndata objects"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.10"
 dependencies = [
     "anndata>=0.11.4",
     "certifi>=2025.4.26",
 ]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+license = "MIT"
+license-files = ["LICEN[CS]E*"]
+[project.urls]
+Homepage = "https://github.com/linearparadox/loupepy"
+Issues = "https://github.com/linearparadox/loupepy/issues"
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]
