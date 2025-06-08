@@ -1,5 +1,5 @@
 from pandas import Series, DataFrame
-from typing import Union
+from typing import Union, List
 from numpy.typing import ArrayLike
 from anndata import AnnData  # type: ignore
 import numpy as np
@@ -141,7 +141,7 @@ def get_count_matrix(anndata: AnnData, layer: str | None = None) -> csc_matrix:
     else:
         return csc_matrix(anndata.X)
 
-def get_obs(anndata: AnnData, obs_keys: str|None = None, strict: bool = False) -> DataFrame:
+def get_obs(anndata: AnnData, obs_keys: List[str]|None = None, strict: bool = False) -> DataFrame:
     """
     Get the obs dataframe from an AnnData object in the format for loupe converter.
     Args:
@@ -157,7 +157,7 @@ def get_obs(anndata: AnnData, obs_keys: str|None = None, strict: bool = False) -
     _validate_obs(obs, strict)
     return obs
 
-def get_obsm(anndata: AnnData, obsm_keys: str | None = None, strict: bool = False) -> dict[str, ndarray]:
+def get_obsm(anndata: AnnData, obsm_keys: List[str] | None = None, strict: bool = False) -> dict[str, ndarray]:
     """
     Get the obsm dictionary from an AnnData object in the format for loupe converter.
     Args:

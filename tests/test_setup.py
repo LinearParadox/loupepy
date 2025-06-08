@@ -1,5 +1,4 @@
-import pytest
-from loupepy.setup import eula_reset, eula_reset, setup  # type: ignore
+from loupepy.setup import eula_reset, setup  # type: ignore
 import os
 
 def test_eula_and_reset(monkeypatch, tmp_path_factory):

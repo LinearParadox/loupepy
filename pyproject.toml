@@ -42,3 +42,9 @@ dev = [
     "scanpy>=1.11.1",
     "scipy-stubs>=1.15.2.1",
 ]
+
+[[tool.uv.index]]
+name = "testpypi"
+url = "https://test.pypi.org/simple/"
+publish-url = "https://test.pypi.org/legacy/"
+explicit = true

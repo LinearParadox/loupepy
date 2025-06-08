@@ -1,13 +1,11 @@
 import os
 from os import PathLike
 
-import numpy as np
 from anndata import AnnData # type: ignore
 import pandas as pd
 from scipy.sparse import csc_matrix
 import h5py # type: ignore
 from typing import List
-from array import array
 import logging
 from numpy import ndarray
 from .utils import _validate_anndata, _get_loupe_path, get_obs, get_obsm, get_count_matrix
