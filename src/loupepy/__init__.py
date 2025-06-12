@@ -1,3 +1,4 @@
+__version__ = "1.1"
 from .setup  import setup as setup
 from .setup import eula as eula
 from .setup import eula_reset as eula_reset
