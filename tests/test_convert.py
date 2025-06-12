@@ -1,13 +1,13 @@
 import pytest
-import h5py
+import h5py  # type: ignore
 import os
 import numpy as np
 import pandas as pd
-import scanpy as sc
+import scanpy as sc  # type: ignore
 from scipy.sparse import diags
 from scipy.sparse import csc_matrix
-from loupepy.convert import create_loupe_from_anndata, create_loupe
-from loupepy.utils import get_obs, get_obsm, get_count_matrix
+from loupepy.convert import create_loupe_from_anndata, create_loupe  # type: ignore
+from loupepy.utils import get_obs, get_obsm, get_count_matrix  # type: ignore
 
 def reverse_engineer_counts(adata, n_counts_column="n_counts"):
     n_counts = adata.obs[n_counts_column].values

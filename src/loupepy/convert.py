@@ -2,13 +2,17 @@ import os
 from os import PathLike
 
 from anndata import AnnData # type: ignore
+from anndata import __version__ as ad_version
 import pandas as pd
 from scipy.sparse import csc_matrix
 import h5py # type: ignore
 from typing import List
 import logging
 from numpy import ndarray
+import platform
 from .utils import _validate_anndata, _get_loupe_path, get_obs, get_obsm, get_count_matrix
+from . import __version__
+
 
 
 def _create_string_dataset(obj: h5py.Group, key: str, strings: List[str]|pd.Series|str|pd.Index) -> None:
@@ -33,6 +37,26 @@ def _create_string_dataset(obj: h5py.Group, key: str, strings: List[str]|pd.Seri
         obj.create_dataset(name=key, dtype=dtype, shape=(0,))
     else:
         obj.create_dataset(name=key, data=strings, dtype=dtype)
+
+def _write_metadata(f: h5py.File) -> None:
+    '''
+    Writes the metadata to the h5 file
+    '''
+    metadata=f.create_group('metadata')
+    meta = {}
+    h5_version = h5py.h5.HDF5_VERSION_COMPILED_AGAINST
+    h5_version = f"{h5_version[0]}.{h5_version[1]}.{h5_version[2]}"
+    meta["tool"] = "LoupePy"
+    meta["tool_version"] = __version__
+    meta["os"] = platform.system()
+    meta["platform"] = platform.platform()
+    meta["language"] = f"Python -- {platform.python_version()}"
+    meta["h5py_version"] = h5py.__version__
+    meta["anndata_version"] = ad_version
+    meta["hdf5_version"] = h5_version
+    for k,v in meta.items():
+        v = str(v)
+        _create_string_dataset(metadata, k, v)
 
 def _write_matrix(f: h5py.File, matrix: csc_matrix,
                   features: pd.Series|pd.Index, barcodes: pd.Index|pd.Series,
@@ -202,6 +226,7 @@ def _write_hdf5(mat: csc_matrix,
             projections = f.create_group('projections')
             for n in obsm.keys():
                 _write_projection(projections, obsm[n], n)
+            _write_metadata(f)
             f.close()
     except ValueError:
         logging.error("Something went wrong while writing the h5 file. Please check the input data.")
