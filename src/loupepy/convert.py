@@ -49,7 +49,7 @@ def _write_metadata(f: h5py.File) -> None:
     meta["tool"] = "LoupePy"
     meta["tool_version"] = __version__
     meta["os"] = platform.system()
-    meta["platform"] = platform.platform()
+    meta["system"] = platform.platform()
     meta["language"] = f"Python -- {platform.python_version()}"
     meta["h5py_version"] = h5py.__version__
     meta["anndata_version"] = ad_version
