@@ -50,7 +50,8 @@ def _write_metadata(f: h5py.File) -> None:
     meta["tool_version"] = __version__
     meta["os"] = platform.system()
     meta["system"] = platform.platform()
-    meta["language"] = f"Python -- {platform.python_version()}"
+    meta["language"] = "Python"
+    meta["language_version"] = f"Python -- {platform.python_version()}"
     meta["h5py_version"] = h5py.__version__
     meta["anndata_version"] = ad_version
     meta["hdf5_version"] = h5_version
@@ -117,7 +118,7 @@ def create_loupe_from_anndata(anndata: AnnData, output_cloupe: str | PathLike = 
                               loupe_converter_path: str | None | PathLike = None, dims: list[str] | None = None,
                               obs_keys: list[str] | None=None, feature_ids: list["str"]|pd.Series|None = None,
                               strict_checking: bool = False, clean_tmp_file: bool=True, force: bool = False,
-                              test_mode=False) -> None:
+                              test_mode=False, verbose=True) -> None:
     ''''
     Creates a temp h5 file and calls the loupe converter executable for the conversion
     Args:
@@ -154,10 +155,14 @@ def create_loupe_from_anndata(anndata: AnnData, output_cloupe: str | PathLike = 
     if test_mode:
         logging.warning("Test mode is enabled. Loupe file will not be created.")
         clean_tmp_file = False
+    if isinstance(obs_keys, str):
+        obs_keys = [obs_keys]
+    if isinstance(dims, str):
+        dims = [dims]
     _validate_anndata(anndata, layer)
-    obs = get_obs(anndata, obs_keys=obs_keys, strict=strict_checking)
+    obs = get_obs(anndata, obs_keys=obs_keys, strict=strict_checking, verbose=verbose)
     mat = get_count_matrix(anndata, layer=layer)
-    projections = get_obsm(anndata, obsm_keys=dims, strict=strict_checking)
+    projections = get_obsm(anndata, obsm_keys=dims, strict=strict_checking, verbose=verbose)
     if len(projections) == 0:
         raise ValueError("No valid projections!")
     create_loupe(mat, obs, anndata.var, projections, tmp_file,
@@ -174,6 +179,7 @@ def create_loupe(mat: csc_matrix,
                  output_path: PathLike|str = "cloupe.cloupe",
                  clean_tmp_file: bool = True,
                  force: bool = False,
+                 verbose: bool = True,
                  feature_ids: list[str]|pd.Series|None = None,
                  test_mode=False) -> None:
     '''

@@ -1,13 +1,16 @@
 import pytest
 import h5py  # type: ignore
 import os
+import urllib
 import numpy as np
 import pandas as pd
 import scanpy as sc  # type: ignore
 from scipy.sparse import diags
 from scipy.sparse import csc_matrix
+from loupepy.setup import _md5_checksum
 from loupepy.convert import create_loupe_from_anndata, create_loupe  # type: ignore
 from loupepy.utils import get_obs, get_obsm, get_count_matrix  # type: ignore
+
 
 def reverse_engineer_counts(adata, n_counts_column="n_counts"):
     n_counts = adata.obs[n_counts_column].values
@@ -81,6 +84,25 @@ def generate_subset(adata_for_loupe, tmp_path_factory):
                               dims=["X_umap"], obs_keys=["some_cat"])
     return str(generated_subset)
 
+@pytest.fixture
+def get_cloupe_converter(tmp_path):
+    """
+    Fixture to retrieve the loupe converter binary path.
+    """
+    for n in range(0, 3):
+        try:
+            link = _md5_checksum()
+            break
+        except OSError:
+            continue
+    else:
+        raise OSError("Failed to retrieve the loupe converter binary.")
+    name= "loupe_converter"
+    dest = tmp_path/name
+    urllib.request.urlretrieve(link, str(dest))
+    dest.chmod(0o755)
+    return str(dest)
+
 @pytest.fixture(scope="module")
 def generate_manually(adata_for_loupe, tmp_path_factory):
     """
@@ -102,6 +124,7 @@ def yield_tests():
     Fixture to yield the test functions.
     This is useful if you want to run tests dynamically or in a specific order.
     """
+
 
 
 @pytest.mark.parametrize("generate_h5_file", ["generate_h5_file", "generate_manually"], indirect=True)
@@ -142,3 +165,11 @@ def test_subsetting(generate_subset):
     with h5py.File(generate_subset, "r") as f:
         assert set(f["projections"].keys()) == {"X_umap"}
         assert set(f['clusters'].keys()) == {"some_cat"}
+
+def test_loupe_converter(get_cloupe_converter, generate_h5_file, tmp_path):
+    """Test the loupe converter binary."""
+    loupe_converter_path = get_cloupe_converter
+    assert os.path.exists(loupe_converter_path)
+    os.system(f"{loupe_converter_path} create --input={generate_h5_file} --output={tmp_path}/output.loupe")
+    assert os.path.exists(tmp_path / "output.loupe")
+
