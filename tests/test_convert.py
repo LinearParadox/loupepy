@@ -17,6 +17,7 @@ def reverse_engineer_counts(adata, n_counts_column="n_counts"):
     counts_matrix = adata.X.expm1()
     counts = diags(n_counts) * counts_matrix
     adata.X = counts
+    adata.layers["counts"] = adata.X.copy()
     return adata
 
 def cluster_dict(levels):
@@ -67,6 +68,17 @@ def generate_h5_file(adata_for_loupe, tmp_path_factory):
     output_dir = tmp_path_factory.mktemp("generated_h5_data")
     generated_file_path = output_dir / "loupepy.h5"
     create_loupe_from_anndata(adata_for_loupe, tmp_file=generated_file_path, test_mode=True)
+    return str(generated_file_path)
+
+@pytest.fixture(scope="module")
+def generate_h5_file_counts(adata_for_loupe, tmp_path_factory):
+    """
+    Generates the Loupe HDF5 file and returns its path.
+    Uses tmp_path_factory for a module-scoped temporary directory.
+    """
+    output_dir = tmp_path_factory.mktemp("generated_h5_data")
+    generated_file_path = output_dir / "loupepy.h5"
+    create_loupe_from_anndata(adata_for_loupe, tmp_file=generated_file_path, test_mode=True, layer="counts")
     return str(generated_file_path)
 
 @pytest.fixture(scope="module")
@@ -156,6 +168,15 @@ def test_matrix(generate_h5_file, valid_h5):
     """Test if the matrix data is correctly written to the HDF5 file."""
     with h5py.File(valid_h5, "r") as valid:
         with h5py.File(generate_h5_file, "r") as generated:
+            valid_matrix = get_equivalent_matrix(valid)
+            generated_matrix = get_equivalent_matrix(generated)
+            for x,y in zip(valid_matrix, generated_matrix):
+                assert np.array_equal(x, y)
+
+def test_matrix_counts(generate_h5_file_counts, valid_h5):
+    """Test if the matrix data is correctly written to the HDF5 file."""
+    with h5py.File(valid_h5, "r") as valid:
+        with h5py.File(generate_h5_file_counts, "r") as generated:
             valid_matrix = get_equivalent_matrix(valid)
             generated_matrix = get_equivalent_matrix(generated)
             for x,y in zip(valid_matrix, generated_matrix):
