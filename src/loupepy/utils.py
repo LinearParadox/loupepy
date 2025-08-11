@@ -142,7 +142,7 @@ def get_count_matrix(anndata: AnnData, layer: str | None = None) -> csc_matrix:
     if layer is None:
         return csc_matrix(anndata.X.T)
     else:
-        return csc_matrix(anndata.X)
+        return csc_matrix(anndata.X.T)
 
 def get_obs(anndata: AnnData, obs_keys: List[str]|None = None, strict: bool = False, verbose: bool = False) -> DataFrame:
     """
