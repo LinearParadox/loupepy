@@ -10,7 +10,6 @@ from scipy.sparse import csc_matrix
 from .setup import _get_install_path
 import os
 from numpy import ndarray
-import warnings
 
 def _validate_barcodes(barcodes: Series) -> bool:
     """
@@ -78,7 +77,7 @@ def _get_loupe_path() -> Path:
     return path
 
 
-def _validate_obs(obs: DataFrame, strict=False) -> DataFrame:
+def _validate_obs(obs: DataFrame, strict=False, verbose=False) -> DataFrame:
     """
     Validate the obs dataframe.
     Args:
@@ -93,15 +92,17 @@ def _validate_obs(obs: DataFrame, strict=False) -> DataFrame:
                 raise ValueError(f'Column {col} is not categorical, which is required for Loupe. '
                                  f'Please check that this is truly categorical data.')
             obs.drop(col, axis=1, inplace=True)
-            logging.warning(f'Column {col} is not categorical, dropping from final obs dataframe.')
+            if verbose:
+                logging.warning(f'Column {col} is not categorical, dropping from final obs dataframe.')
         elif len(obs[col].cat.categories) > 32768:
             if strict:
                 raise ValueError(f'Column {col} has more than 32768 categories, which '
                                  f'is not supported by Loupe. Please check that this is truly categorical data.')
-            warnings.warn(f'Column {col} has more than 32768 categories, skipping')
+            if verbose:
+                logging.warning(f'Column {col} has more than 32768 categories, skipping')
             obs.drop(col, axis=1, inplace=True)
 
-def _validate_obsm(obsm: dict[str, ndarray], obsm_keys: list[str]|None = None, strict: bool = False) -> list[str]:
+def _validate_obsm(obsm: dict[str, ndarray], obsm_keys: list[str]|None = None, strict: bool = False, verbose: bool = False) -> list[str]:
     """
     Validate the obsm dictionary.
     Args:
@@ -117,12 +118,14 @@ def _validate_obsm(obsm: dict[str, ndarray], obsm_keys: list[str]|None = None, s
         if not isinstance(obsm[key], np.ndarray):
             if strict:
                 raise ValueError(f'Obsm key {key} has invalid type {type(obsm[key])}. Must be a numpy array.')
-            warnings.warn(f'Obsm key {key} has invalid type {type(obsm[key])}. Dropping from output.')
+            if verbose:
+                logging.warning(f'Obsm key {key} has invalid type {type(obsm[key])}. Dropping from output.')
         elif obsm[key].shape[1] != 2:
             if strict:
                 raise ValueError(f'Obsm key {key} has invalid shape {obsm[key].shape}. '
                                  f'Must be an array with shape (n_cells, 2).')
-            warnings.warn(f'Obsm key {key} has invalid shape {obsm[key].shape}. Dropping from output.')
+            if verbose:
+                logging.warning(f'Obsm key {key} has invalid shape {obsm[key].shape}. Dropping from output.')
         else:
             valid_keys.append(key)
     return valid_keys
@@ -139,25 +142,26 @@ def get_count_matrix(anndata: AnnData, layer: str | None = None) -> csc_matrix:
     if layer is None:
         return csc_matrix(anndata.X.T)
     else:
-        return csc_matrix(anndata.X)
+        return csc_matrix(anndata.X.T)
 
-def get_obs(anndata: AnnData, obs_keys: List[str]|None = None, strict: bool = False) -> DataFrame:
+def get_obs(anndata: AnnData, obs_keys: List[str]|None = None, strict: bool = False, verbose: bool = False) -> DataFrame:
     """
     Get the obs dataframe from an AnnData object in the format for loupe converter.
     Args:
         anndata (AnnData): AnnData object to get the obs dataframe from.
         obs_keys (str | None): Keys to subset the obs dataframe. If None, will use all valid keys.
         strict (bool): If True, will raise an error if any of the columns are not categorical.
+        verbose (bool): If True, will print warnings.
     Returns:
         DataFrame: Obs dataframe in the format for loupe converter.
     """
     obs = anndata.obs.copy()
     if obs_keys:
         obs = obs.loc[:,obs_keys]
-    _validate_obs(obs, strict)
+    _validate_obs(obs, strict, verbose)
     return obs
 
-def get_obsm(anndata: AnnData, obsm_keys: List[str] | None = None, strict: bool = False) -> dict[str, ndarray]:
+def get_obsm(anndata: AnnData, obsm_keys: List[str] | None = None, strict: bool = False, verbose: bool = False) -> dict[str, ndarray]:
     """
     Get the obsm dictionary from an AnnData object in the format for loupe converter.
     Args:
@@ -168,5 +172,5 @@ def get_obsm(anndata: AnnData, obsm_keys: List[str] | None = None, strict: bool 
         dict[str, ndarray]: Obsm dictionary in the format for loupe converter.
     """
     obsm = anndata.obsm.copy()
-    valid_keys = _validate_obsm(obsm, obsm_keys, strict)
+    valid_keys = _validate_obsm(obsm, obsm_keys, strict, verbose= verbose)
     return {key: obsm[key] for key in valid_keys}

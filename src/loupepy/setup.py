@@ -5,12 +5,12 @@ from pathlib import Path
 import logging
 import os
 from typing import Union
-OPERATING_SYSTEM = platform.system()
 
 def _get_checksum() -> tuple[str, str]:
     '''
     Returns the checksum of the loupe converter binary
     '''
+    OPERATING_SYSTEM = platform.system().lower()
     if OPERATING_SYSTEM.startswith('win'):
         return ("https://github.com/10XGenomics/loupeR/releases/"
         "download/v1.1.4/louper-windows-x64.exe","f5d1e99138e840169a19191d10bb25ab")
@@ -40,6 +40,7 @@ def _get_install_path() -> Path:
     '''
     A function to return the path to the users config directory.
     '''
+    OPERATING_SYSTEM = platform.system().lower()
     home = Path(os.path.expanduser("~"))
     if OPERATING_SYSTEM.startswith("win"):
         base = Path(os.environ.get("APPDATA", home / "AppData" / "Roaming" / "loupepy"))

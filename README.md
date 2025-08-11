@@ -44,6 +44,7 @@ Creates a Loupe Browser compatible `.cloupe` file from an `AnnData` object.
 - `loupe_converter_path`: Path to the Loupe converter binary (default: None, uses default installation path)
 - `clean_tmp_file`: Whether to delete the temporary file after creation (default: True)
 - `force`: Whether to overwrite existing cloupe file (default: False)
+- `verbose`: Whether to log warnings when incompatible dims/obs are dropped. (default: True)
 - `test_mode`: Whether to run in test mode. Will not create a cloupe file.
 
 **Example:**
